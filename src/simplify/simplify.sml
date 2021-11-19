@@ -85,6 +85,38 @@ structure Simplify : sig
         (* convert expressions to variables *)
           and expToVar (env, e, k : SVar.t -> S.exp) =
                 expToValue (env, e, fn (S.V_VAR x) => k x | _ => raise Match)
+        (* convert a primitive operator to a right-hand-side expression; this
+         * conversion includes adding error checking when necessary.
+         *)
+          and primToRHS (p, args, k) = let
+                val resTy = Prim.resultTypeOf p
+              (* build an expression that applies the give test operator to (v1, v2) and
+               * fails with the given message if the test is false.
+               *)
+                fun mkChk (tst, v1, v2, msg) = let
+                      val res = newTmpVar resTy
+                      val dummy = newTmpVar resTy
+                      in
+                        S.mkCOND(tst, [v1, v2],
+                          S.mkLET(res, S.R_PRIM(p, args), S.mkRET(S.V_VAR res)),
+                          S.mkLET(dummy, S.R_CALL(Runtime.funFail, [S.V_STR msg]),
+                            S.mkRET(S.V_VAR dummy)))
+                      end
+                in
+                  case (p, args)
+                   of (Prim.IntDiv, [a, b]) =>
+                        k (S.R_EXP(mkChk (PrimCond.IntNEq, b, S.V_INT 0, "Divide by zero")))
+                    | (Prim.IntMod, [a, b]) =>
+                        k (S.R_EXP(mkChk (PrimCond.IntNEq, b, S.V_INT 0, "Remainder by zero")))
+                    | (Prim.StrSub, [a, b]) => let
+                        val len = newTmpVar PTy.Int
+                        val chk = mkChk (PrimCond.UIntLt, b, S.V_VAR len, "Subscript out of bounds")
+                        in
+                          k (S.R_EXP(S.mkLET(len, S.R_PRIM(Prim.StrSize, [a]), chk)))
+                        end
+                    | _ => k (S.R_PRIM(p, args))
+                  (* end case *)
+                end
         (* convert expressions to right-hand-sides (the ℛ⟦⟧ translation function) *)
           and expToRHS (env, exp, k : S.rhs -> S.exp) : S.exp = (case repOfExp exp
                  of AST.E_APPLY(e1, e2) => let
@@ -93,7 +125,7 @@ structure Simplify : sig
                       fun argsToVals (arity, k) = argsToValues (env, arity, e2, k)
                       fun trFnApp f = (case B.lookup f
                              of B.PrimOp p =>
-                                  argsToVals (Prim.arityOf p, fn vs => k (S.R_PRIM(p, vs)))
+                                  argsToVals (Prim.arityOf p, fn vs => primToRHS(p, vs, k))
                               | B.CondOp tst => expRHS ()
                               | B.RTFun cf =>
                                   argsToVals (Runtime.arityOf cf, fn vs => k (S.R_CALL(cf, vs)))
@@ -172,7 +204,9 @@ structure Simplify : sig
                       fun trFnApp f = (case B.lookup f
                              of B.PrimOp p =>
                                   argsToVals (Prim.arityOf p, fn vs =>
-                                    mkLet (S.R_PRIM(p, vs)))
+                                    primToRHS (p, vs,
+                                     fn S.R_EXP e => e
+                                      | rhs => mkLet rhs))
                               | B.CondOp tst =>
                                 (* application of conditional operator outside
                                  * of a conditional context.

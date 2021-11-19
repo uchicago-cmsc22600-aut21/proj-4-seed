@@ -65,8 +65,7 @@ structure SimpleBasis : sig
                (B.opASSIGN,     PrimOp P.RefAssign),
                (B.opDEREF,      PrimOp P.RefDeref),
              (* predefined variables *)
-(* QUESTION: should this be mapping to `RTFun RT.funStrChr` ? *)
-               (B.varChr,       PrimOp P.StrChr),
+               (B.varChr,       RTFun RT.funStrChr),
                (B.varExit,      RTFun RT.funExit),
                (B.varFail,      RTFun RT.funFail),
                (B.varNewRef,    PrimOp P.RefNew),

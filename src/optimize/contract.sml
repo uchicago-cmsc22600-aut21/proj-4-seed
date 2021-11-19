@@ -161,10 +161,6 @@ structure Contract : sig
                       then mkInt(IntInf.fromInt(ord(String.sub(a, Int.fromLarge b))))
                       else rename ()
                   end
-              | (P.StrChr, [S.V_INT a]) =>
-                  if (0 < a) andalso (a < 256)
-                    then result (S.V_STR(str(chr(Int.fromLarge a))))
-                    else rename ()
               | _ => rename ()
             (* end case *)
           end

@@ -18,20 +18,18 @@ structure Prim =
   (* primitive operators; note that the Boxed test is CFG only *)
     datatype t
       = IntAdd | IntSub | IntMul | IntDiv | IntMod | IntNeg
-      | StrSize | StrSub | StrChr
+      | StrSize | StrSub
       | RefAssign | RefDeref | RefNew
 
   (* return the number of arguments of the operator *)
     fun arityOf IntNeg = 1
       | arityOf StrSize = 1
-      | arityOf StrChr = 1
       | arityOf RefDeref = 1
       | arityOf RefNew = 1
       | arityOf _ = 2
 
   (* return the result type of the primitive operator *)
-    fun resultTypeOf StrChr = PrimType.String
-      | resultTypeOf RefDeref = PrimType.Any
+    fun resultTypeOf RefDeref = PrimType.Any
       | resultTypeOf RefNew = PrimType.Ref
       | resultTypeOf _ = PrimType.Int   (* includes representation of Bool type *)
 
@@ -40,7 +38,6 @@ structure Prim =
       | isPure IntDiv = false
       | isPure IntMod = false
       | isPure StrSub = false
-      | isPure StrChr = false
       | isPure _ = true
 
   (* are two primops the same? *)
@@ -55,7 +52,6 @@ structure Prim =
       | toString IntNeg = "IntNeg"
       | toString StrSize = "StrSize"
       | toString StrSub = "StrSub"
-      | toString StrChr = "StrChr"
       | toString RefAssign = "RefAssign"
       | toString RefDeref = "RefDeref"
       | toString RefNew = "RefNew"
