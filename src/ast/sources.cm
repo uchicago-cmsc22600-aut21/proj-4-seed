@@ -1,0 +1,39 @@
+(* sources.cm
+ *
+ * COPYRIGHT (c) 2021 John Reppy (http://cs.uchicago.edu/~jhr)
+ * All rights reserved.
+ *)
+
+Library
+
+  structure AST
+  structure Basis
+  structure DataCon
+  structure DumpAST
+  structure Exp
+  structure MetaVar
+  structure TyCon
+  structure Types
+  structure TypeUtil
+  structure TyVar
+  structure Var
+
+is
+
+  $/basis.cm
+  $/smlnj-lib.cm
+
+  ../bind-tree/sources.cm
+  ../common/sources.cm
+
+  ast.sml
+  basis.sml
+  data-con.sml
+  dump-ast.sml
+  exp.sml
+  meta-var.sml
+  ty-con.sml
+  ty-var.sml
+  types.sml
+  type-util.sml
+  var.sml

@@ -1,0 +1,39 @@
+(* sources.cm
+ *
+ * COPYRIGHT (c) 2021 John Reppy (http://cs.uchicago.edu/~jhr)
+ * All rights reserved.
+ *
+ * Sample code
+ * CMSC 22600
+ * Autumn 2021
+ * University of Chicago
+ *)
+
+Library
+
+  structure Main
+
+is
+
+  $/basis.cm
+  $/smlnj-lib.cm
+  $/unix-lib.cm
+
+  ../ast/sources.cm
+  ../bind-tree/sources.cm
+  ../binding/sources.cm
+  ../cfg/sources.cm
+  ../closure/sources.cm
+  ../codegen/sources.cm
+  ../common/sources.cm
+  ../llvm/sources.cm
+  ../parse-tree/sources.cm
+  ../parser/sources.cm
+  ../optimize/sources.cm
+  ../simple/sources.cm
+  ../simplify/sources.cm
+  ../type-checker/sources.cm
+
+  main.sml
+  options.sml
+  unix-util.sml

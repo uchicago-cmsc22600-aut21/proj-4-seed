@@ -1,0 +1,30 @@
+(* sources.cm
+ *
+ * COPYRIGHT (c) 2021 John Reppy (http://cs.uchicago.edu/~jhr)
+ * All rights reserved.
+ *
+ * Sample code
+ * CMSC 22600
+ * Autumn 2021
+ * University of Chicago
+ *)
+
+Library
+
+  structure BindBasis
+  structure BindTree
+  structure DumpBindTree
+
+is
+
+  $/basis.cm
+  $/smlnj-lib.cm
+  $/ml-lpt-lib.cm
+
+  ../common/sources.cm
+  ../parse-tree/sources.cm
+
+  bind-basis.sml
+  bind-tree.sml
+  dump-bind-tree.sml
+  identifier-fn.sml

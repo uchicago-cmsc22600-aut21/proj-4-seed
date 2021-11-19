@@ -1,0 +1,365 @@
+(* mll.grm
+ *
+ * COPYRIGHT (c) 2021 John Reppy (http://cs.uchicago.edu/~jhr)
+ * All rights reserved.
+ *
+ * Sample code
+ * CMSC 22600
+ * Autumn 2021
+ * University of Chicago
+ *
+ * ML-Antlr specification for ML Lite.
+ *)
+
+%name MLL;
+
+%defs (
+  structure PT = ParseTree
+  structure Op = OpNames
+
+  type pos = Error.pos
+
+  fun opt2list NONE = []
+    | opt2list (SOME l) = l
+
+  fun mark con (span, tr) = con{span = span, tree = tr}
+  val markTy = mark PT.TyMark
+  val markExp = mark PT.ExpMark
+  val markPat = mark PT.PatMark
+
+  fun mkCondExp mkExp (lPos : pos, lhs : PT.exp, rhs : (PT.exp * pos) list) = let
+        fun mk (lhs, []) = lhs
+          | mk (lhs, (e, rPos)::r) = mk (markExp ((lPos, rPos), mkExp(lhs, e)), r)
+        in
+          mk (lhs, rhs)
+        end
+
+(* given a left position (lPos), a left-hand-side expression (lhs), and a list of
+ * (operator, expression, right position) triples, construct a left-associative tree
+ * binary expressions.
+ *)
+  fun mkLBinExp (lPos : pos, lhs : PT.exp, rhs : (PT.id * PT.exp * pos) list) = let
+        fun mk (lhs, []) = lhs
+          | mk (lhs, (rator, e, rPos)::r) =
+              mk (markExp ((lPos, rPos), PT.ExpBin(lhs, rator, e)), r)
+        in
+          mk (lhs, rhs)
+        end
+
+(* given a left position (lPos), a left-hand-side expression (lhs), and a list of
+ * (operator, left position, expression) triples, construct a right-associative tree
+ * binary expressions.
+ *)
+  fun mkRBinExp (lPos : pos, lhs : PT.exp, rhs : (PT.id * pos * PT.exp) list, rPos : pos) = let
+        fun mk (_, lhs, []) = lhs
+          | mk (lPos, lhs, (rator, lPos', e)::r) = let
+              val rhs = mk (lPos', e, r)
+              in
+                markExp ((lPos, rPos), PT.ExpBin(lhs, rator, rhs))
+              end
+        in
+          mk (lPos, lhs, rhs)
+        end
+
+(* version of mkRBinExp for List "::" *)
+  fun mkListConsExp (lPos : pos, lhs : PT.exp, rhs : (pos * PT.exp) list, rPos : pos) = let
+        fun mk (_, lhs, []) = lhs
+          | mk (lPos, lhs, (lPos', e)::r) = let
+              val rhs = mk (lPos', e, r)
+              in
+                markExp ((lPos, rPos), PT.ExpListCons(lhs, rhs))
+              end
+        in
+          mk (lPos, lhs, rhs)
+        end
+);
+
+(* MLL tokens *)
+%tokens
+    : KW_case           ("case")
+    | KW_data           ("data")
+    | KW_else           ("else")
+    | KW_end            ("end")
+    | KW_fun            ("fun")
+    | KW_if             ("if")
+    | KW_let            ("let")
+    | KW_of             ("of")
+    | KW_then           ("then")
+    | LP                ("(")
+    | RP                (")")
+    | LB                ("[")
+    | RB                ("]")
+    | LCB               ("{")
+    | RCB               ("}")
+    | ASSIGN            (":=")
+    | ORELSE            ("||")
+    | ANDALSO           ("&&")
+    | EQEQ              ("==")
+    | NEQ               ("!=")
+    | LTEQ              ("<=")
+    | LT                ("<")
+    | CONS              ("::")
+    | CONCAT            ("^")
+    | PLUS              ("+")
+    | MINUS             ("-")
+    | TIMES             ("*")
+    | DIV               ("/")
+    | MOD               ("%")
+    | DEREF             ("!")
+    | EQ                ("=")
+    | COMMA             (",")
+    | SEMI              (";")
+    | BAR               ("|")
+    | ARROW             ("->")
+    | DARROW            ("=>")
+    | WILD              ("_")
+    | UID of Atom.atom
+    | LID of Atom.atom
+    | NUMBER of IntInf.int
+    | STRING of string
+    ;
+
+%start Program;
+
+Program
+        : Prog
+                => (mark PT.ProgMark (FULL_SPAN, PT.Prog Prog))
+        ;
+
+Prog
+        : Exp ( ";" Prog )?
+                => (case SR
+                     of NONE => ([], Exp)
+                      | SOME(dcls, exp) => let
+                          val dcl = mark PT.DclMark (Exp_SPAN, PT.DclVal(PT.BindExp Exp))
+                          in
+                            (dcl :: dcls, exp)
+                          end
+                    (* end case *))
+        | TopDcl ";" Prog
+                => (let val (dcls, exp) = Prog in (TopDcl::dcls, exp) end)
+        ;
+
+TopDcl
+        : DataDcl
+                => (mark PT.DclMark (FULL_SPAN, DataDcl))
+        | ValBind
+                => (mark PT.DclMark (FULL_SPAN, PT.DclVal ValBind))
+        ;
+
+DataDcl
+        : "data" UID TypeParams? "=" ConDcl ( "|" ConDcl )*
+                => (PT.DclData(UID, opt2list TypeParams, ConDcl::SR))
+        ;
+
+ConDcl
+        : UID ("of" Type)?
+                => (mark PT.ConMark (FULL_SPAN, PT.Con(UID, SR)))
+        ;
+
+TypeParams
+        : "[" LID ("," LID)* "]"
+                => (LID :: SR)
+        ;
+
+Type
+        : TupleType ("->" Type)?
+                => (case SR
+                     of NONE => TupleType
+                      | SOME ty => markTy (FULL_SPAN, PT.TyFun(TupleType, ty))
+                    (* end case *))
+        ;
+
+TupleType
+        : AtomicType ("*" AtomicType)*
+            => (case SR
+                 of [] => AtomicType
+                  | _ => markTy (FULL_SPAN, PT.TyTuple(AtomicType :: SR))
+                (* end case *))
+        ;
+
+AtomicType
+        : "(" Type ")"
+                => (Type)
+        | LID
+                => (markTy (FULL_SPAN, PT.TyVar LID))
+        | UID TypeArgs?
+                => (markTy (FULL_SPAN, PT.TyCon(UID, opt2list TypeArgs)))
+        ;
+
+TypeArgs
+        : "[" Type ("," Type)* "]"
+                => (Type :: SR)
+        ;
+
+ValBind
+        : "let" AtomicPat "=" Exp
+                => (mark PT.BindMark (FULL_SPAN, PT.BindVal(AtomicPat, Exp)))
+        | "fun" LID AtomicPat+ "=" Exp
+                => (mark PT.BindMark (FULL_SPAN, PT.BindFun(LID, AtomicPat, Exp)))
+        ;
+
+(***** Expressions *****)
+
+Exp
+        : "if" Exp "then" Exp "else" Exp
+                => (markExp (FULL_SPAN, PT.ExpIf(Exp1, Exp2, Exp3)))
+        | AssignExp
+                => (AssignExp)
+        ;
+
+AssignExp
+        : OrElseExp ( ":=" OrElseExp )?
+                => (case SR
+                     of SOME exp => markExp (FULL_SPAN, PT.ExpBin(OrElseExp, Op.asgnId, exp))
+                      | NONE => OrElseExp
+                    (* end case *))
+        ;
+
+OrElseExp
+        : AndAlsoExp ( "||" AndAlsoExp => (AndAlsoExp, #2 AndAlsoExp_SPAN) )*
+                => (mkCondExp PT.ExpOrElse (#1 AndAlsoExp_SPAN, AndAlsoExp, SR))
+        ;
+
+AndAlsoExp
+        : RelExp ( "&&" RelExp => (RelExp, #2 RelExp_SPAN) )*
+                => (mkCondExp PT.ExpAndAlso (#1 RelExp_SPAN, RelExp, SR))
+        ;
+
+(* relational expressions *)
+RelExp
+        : ListExp ( RelOp ListExp => (RelOp, ListExp, #2 ListExp_SPAN) )*
+                => (mkLBinExp (#1 ListExp_SPAN, ListExp, SR))
+        ;
+
+RelOp
+        : "=="          => (OpNames.eqlId)
+        | "!="          => (OpNames.neqId)
+        | "<"           => (OpNames.ltId)
+        | "<="          => (OpNames.lteId)
+        ;
+
+(* list expressions *)
+ListExp
+        : AddExp ( "::" AddExp => (#1 AddExp_SPAN, AddExp) )*
+                => (mkListConsExp(#1 AddExp_SPAN, AddExp, SR, #2 FULL_SPAN))
+        ;
+
+(* addition expressions (including string concatenation) *)
+AddExp
+        : MulExp ( AddOp MulExp => (AddOp, MulExp, #2 MulExp_SPAN) )*
+                => (mkLBinExp(#1 FULL_SPAN, MulExp, SR))
+        ;
+
+AddOp
+        : "+" => (Op.addId)
+        | "-" => (Op.subId)
+        | "^" => (Op.strcatId)
+        ;
+
+(* multiplication expressions *)
+MulExp
+        : PrefixExp ( MulOp PrefixExp => (MulOp, PrefixExp, #2 PrefixExp_SPAN) )*
+                => (mkLBinExp (#1 PrefixExp_SPAN, PrefixExp, SR))
+        ;
+
+MulOp
+        : "*"           => (OpNames.mulId)
+        | "/"           => (OpNames.divId)
+        | "%"           => (OpNames.modId)
+        ;
+
+(* unary-operator expressions *)
+PrefixExp
+        : UnaryOp* ApplyExp
+                => (let
+                    val rhsPos = #2 ApplyExp_SPAN
+                    fun mk ((id, lhsPos), exp) =
+                          markExp ((lhsPos, rhsPos), PT.ExpUn(id, exp))
+                    in
+                      List.foldr mk ApplyExp UnaryOp
+                    end)
+        ;
+
+UnaryOp
+        : "-"           => (OpNames.negId, #1 FULL_SPAN)
+        | "!"           => (OpNames.derefId, #1 FULL_SPAN)
+        ;
+
+(* application expressions *)
+ApplyExp
+        : AtomicExp ( AtomicExp => (#2 AtomicExp_SPAN, AtomicExp) )*
+                => (let
+                    fun mkApp (e, []) = e
+                      | mkApp (e, (rPos, e')::r) =
+                          mkApp (markExp ((#1 AtomicExp_SPAN, rPos), PT.ExpApp(e, e')), r)
+                    in
+                      mkApp (AtomicExp, SR)
+                    end)
+        ;
+
+AtomicExp
+        : LID
+                => (markExp (FULL_SPAN, PT.ExpVar LID))
+        | UID
+                => (markExp (FULL_SPAN, PT.ExpCon UID))
+        | NUMBER
+                => (markExp (FULL_SPAN, PT.ExpInt NUMBER))
+        | STRING
+                => (markExp (FULL_SPAN, PT.ExpStr STRING))
+        | "(" ( Exp ("," Exp)* => (Exp :: SR) )? ")"
+                => (case opt2list SR
+                     of [exp] => exp
+                      | exps => markExp (FULL_SPAN, PT.ExpTuple exps)
+                    (* end case *))
+        | "{" Scope "}"
+                => (markExp (FULL_SPAN, PT.ExpScope Scope))
+        | "case" Exp "of" MatchCase+ "end"
+                => (markExp (FULL_SPAN, PT.ExpCase(Exp, MatchCase)))
+        ;
+
+Scope
+        : ValBind ";" Scope
+                => (let val (defs, exp) = Scope
+                    in
+                      (ValBind :: defs, exp)
+                    end)
+        | Exp (";" Scope)?
+                => (case SR
+                     of NONE => ([], Exp)
+                      | SOME(defs, exp) => (PT.BindExp Exp :: defs, exp)
+                    (* end case *))
+        ;
+
+MatchCase
+        : "{" Pat "=>" Scope "}"
+                => (mark PT.RuleMark (FULL_SPAN, PT.RuleCase(Pat, Scope)))
+        ;
+
+Pat
+        : AtomicPat
+                => (AtomicPat)
+        | UID SimplePat?
+                => (markPat (FULL_SPAN, PT.PatCon(UID, SimplePat)))
+        | SimplePat "::" SimplePat
+                => (markPat (
+                      FULL_SPAN,
+                      PT.PatListCons(SimplePat1, SimplePat2)))
+        ;
+
+AtomicPat
+        : SimplePat
+                => (SimplePat)
+        | "(" SimplePat ("," SimplePat)* ")"
+                => (case SR
+                     of [] => SimplePat
+                      | pats => markPat (FULL_SPAN, PT.PatTuple(SimplePat :: pats))
+                    (* end case *))
+        ;
+
+SimplePat
+        : LID
+                => (markPat (FULL_SPAN, PT.PatVar LID))
+        | "_"
+                => (markPat (FULL_SPAN, PT.PatWild))
+        ;

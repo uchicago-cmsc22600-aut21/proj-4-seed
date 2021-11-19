@@ -1,0 +1,95 @@
+(* simple-basis.sml
+ *
+ * COPYRIGHT (c) 2021 John Reppy (http://cs.uchicago.edu/~jhr)
+ * All rights reserved.
+ *
+ * Sample code
+ * CMSC 22600
+ * Autumn 2021
+ * University of Chicago
+ *
+ * This module maps the AST representation of Basis variables to either
+ * primitive operators or runtime-system functions.
+ *)
+
+structure SimpleBasis : sig
+
+  (* representation of variables *)
+    datatype t
+      = UserVar                 (* returned for non-basis variables *)
+      | PrimOp of Prim.t        (* returned for variables that map to a prim op *)
+      | CondOp of PrimCond.t    (* returned for variables that map to a conditional op *)
+      | RTFun of Runtime.t      (* returned for variables that map to a runtime-system function *)
+
+  (* map a variable to its SimpleAST representation *)
+    val lookup : AST.var -> t
+
+  (* builtin data constructors *)
+    val conTrue  : SimpleDataCon.t
+    val conFalse : SimpleDataCon.t
+    val conCons  : SimpleDataCon.t
+    val conNil   : SimpleDataCon.t
+
+  end = struct
+
+    structure B = Basis
+    structure Tbl = Var.Tbl
+    structure P = Prim
+    structure C = PrimCond
+    structure RT = Runtime
+
+    datatype t
+      = UserVar
+      | PrimOp of P.t
+      | CondOp of C.t
+      | RTFun of RT.t
+
+    val tbl = let
+          val tbl = Tbl.mkTable (32, Fail "Simple Basis Tbl")
+          val ins = Tbl.insert tbl
+          in
+            List.app ins [
+             (* operators *)
+               (B.opEQ,         CondOp C.IntEq),
+               (B.opNEQ,        CondOp C.IntNEq),
+               (B.opLTE,        CondOp C.IntLte),
+               (B.opLT,         CondOp C.IntLt),
+               (B.opCONCAT,     RTFun RT.funConcat),
+               (B.opADD,        PrimOp P.IntAdd),
+               (B.opSUB,        PrimOp P.IntSub),
+               (B.opMUL,        PrimOp P.IntMul),
+               (B.opDIV,        PrimOp P.IntDiv),
+               (B.opMOD,        PrimOp P.IntMod),
+               (B.opNEG,        PrimOp P.IntNeg),
+             (* reference operators *)
+               (B.opASSIGN,     PrimOp P.RefAssign),
+               (B.opDEREF,      PrimOp P.RefDeref),
+             (* predefined variables *)
+(* QUESTION: should this be mapping to `RTFun RT.funStrChr` ? *)
+               (B.varChr,       PrimOp P.StrChr),
+               (B.varExit,      RTFun RT.funExit),
+               (B.varFail,      RTFun RT.funFail),
+               (B.varNewRef,    PrimOp P.RefNew),
+               (B.varPrint,     RTFun RT.funPrint),
+               (B.varSize,      PrimOp P.StrSize),
+               (B.varSub,       PrimOp P.StrSub)
+              ];
+            tbl
+          end
+
+    fun lookup x = if Var.isPrim x
+          then Tbl.lookup tbl x
+          else UserVar
+
+    local
+      structure PTy = PrimType
+      structure DC = SimpleDataCon
+      fun mkCon (dc, argTy, rep) = DC.new(DataCon.nameOf dc, argTy, rep)
+    in
+    val conTrue = mkCon(B.conTrue, NONE, DC.Enum 1)
+    val conFalse = mkCon(B.conFalse, NONE, DC.Enum 0)
+    val conCons = mkCon(B.conCons, SOME(PTy.Tuple[PTy.Any, PTy.Any]), DC.Immediate)
+    val conNil = mkCon(B.conNil, NONE, DC.Enum 0)
+    end
+
+  end

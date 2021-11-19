@@ -1,0 +1,31 @@
+(* sources.cm
+ *
+ * COPYRIGHT (c) 2021 John Reppy (http://cs.uchicago.edu/~jhr)
+ * All rights reserved.
+ *
+ * Sample code
+ * CMSC 22600
+ * Autumn 2021
+ * University of Chicago
+ *)
+
+Library
+
+  structure DumpUtil
+  structure Error
+  structure ProgPt
+  structure SExp        (* re-export from sexp-lib *)
+  structure Stamp
+
+is
+
+  $/basis.cm
+  $/smlnj-lib.cm
+  $/ml-lpt-lib.cm
+  $/pp-lib.cm
+  $/sexp-lib.cm
+
+  dump-util.sml
+  error.sml
+  prog-pt.sml
+  stamp.sml

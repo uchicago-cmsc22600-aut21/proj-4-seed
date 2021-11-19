@@ -1,0 +1,27 @@
+(* sources.cm
+ *
+ * COPYRIGHT (c) 2021 John Reppy (http://cs.uchicago.edu/~jhr)
+ * All rights reserved.
+ *)
+
+Library
+
+  structure TypeChecker
+
+is
+
+  $/basis.cm
+  $/smlnj-lib.cm
+
+  ../ast/sources.cm
+  ../bind-tree/sources.cm
+  ../common/sources.cm
+
+  chk-exp.sml
+  chk-pat.sml
+  chk-ty.sml
+  context.sml
+  coverage.sml
+  id-props.sml
+  type-checker.sml
+  unify.sml

@@ -1,0 +1,29 @@
+(* sources.cm
+ *
+ * COPYRIGHT (c) 2021 John Reppy (http://cs.uchicago.edu/~jhr)
+ * All rights reserved.
+ *
+ * Sample code
+ * CMSC 22600
+ * Autumn 2021
+ * University of Chicago
+ *)
+
+Library
+
+  structure Closure
+
+is
+
+  $/basis.cm
+  $/smlnj-lib.cm
+
+  ../cfg/sources.cm
+  ../common/sources.cm
+  ../prim/sources.cm
+  ../simple/sources.cm
+
+  case-split.sml
+  closure.sml
+  env.sml
+  var-analysis.sml
