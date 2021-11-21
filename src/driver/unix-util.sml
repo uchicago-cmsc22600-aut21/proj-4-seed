@@ -27,7 +27,7 @@ structure UnixUtil : sig
 
   (* get the path to the runtime system.  We do this by assuming that if the
    * compiler command is "<path>/bin/mlc.sh", then the library will be in
-   * "<path>/src/runtime/langf-rt.o".  If the runtime object file does not exist,
+   * "<path>/src/runtime/mll-rt.o".  If the runtime object file does not exist,
    * then we print an error message and raise the Error.ERROR exception.
    *)
     val runtimePath : unit -> string

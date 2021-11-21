@@ -47,6 +47,7 @@ structure TypeChecker : sig
                   IdProps.dconSet(dc, dc')
                 end
           in
+            IdProps.tyconSet (tyc, tyc');
             List.app (fn dc => chkCon(cxt, dc)) cons;
             C.addDataTyc (cxt, TyCon.finish tyc');
             NONE (* no value binding *)
