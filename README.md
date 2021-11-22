@@ -1,4 +1,4 @@
-# Project 3
+# Project 4
 
 The source code is located in subdirectories of the `src` directory;
 use the `Makefile` to build it.  The executable will be added to the
