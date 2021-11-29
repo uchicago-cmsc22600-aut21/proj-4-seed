@@ -211,6 +211,7 @@ structure LLVMModule : sig
                   | Rep.CondBr => condBrOp args
                   | Rep.CommentOp => commentOp args
                 (* end case *))
+(* WARNING: this code works for LLVM 10.0.1, but not for 12.0.1 *)
           and callOp (SOME reg, func :: args, live) = let
               (* we skipped non pointers when assigning indices in llvm-block, so we
                * must do the same here for the live list.

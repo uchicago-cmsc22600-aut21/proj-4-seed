@@ -337,7 +337,6 @@ structure LLVMBlock : sig
                         String.concatWithMap ", " Var.toString args, ") ;; live = {",
                         String.concatWithMap ", " Var.toString live, "}"
                       ])
-                val Ty.Func(retT, paramTys) = Var.typeOf func
               (* add casts for arguments that are ints, where the expected type is a pointer *)
                 val args = let
                       fun addCast (x, ty as Ty.Ptr _) = emitCast(blk, ty, x)
