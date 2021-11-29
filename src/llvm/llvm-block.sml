@@ -297,10 +297,9 @@ structure LLVMBlock : sig
 
   (* memory operations *)
     fun emitLd (blk, ty, ptr) = let
-          val SOME resTy = Ty.deref (Var.typeOf ptr)
-          val res = emitInstr' resTy Rep.LoadOp (blk, [ptr])
+          val ptr = emitCast (blk, Ty.Ptr ty, ptr)
           in
-            emitCast (blk, ty, res)
+            emitInstr' ty Rep.LoadOp (blk, [ptr])
           end
 
   (* map a pointer to something as a pointer to baseTy *)
