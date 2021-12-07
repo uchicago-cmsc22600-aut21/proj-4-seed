@@ -48,6 +48,13 @@ structure Main : sig
     val dumpCFG = dumpIf DumpCFG.dumpToFile Options.dumpCfg
     end (* local *)
 
+  (* run the `cc` command to compile the generated assembly code and link it with the runtime *)
+    fun runCC base = (case SMLofNJ.SysInfo.getOSName()
+           of "Darwin" => UU.run ("cc", [base ^ ".s", UU.runtimePath(), "-o", base])
+            | "Linux" => UU.run ("cc", ["-static", base ^ ".s", UU.runtimePath(), "-o", base])
+            | os => raise Fail(concat["runCC: unknown OS '", os, "'"])
+          (* end case *))
+
   (* process an input file *)
     fun doFile (errStrm, filename) = let
           val base = OS.Path.base filename
@@ -116,7 +123,7 @@ structure Main : sig
           (* final steps to produce an executable *)
             if isSuccess (UU.run ("llc", [base ^ ".ll", "-o", base ^ ".s"]))
             andalso isSuccess (UU.patchAssembly (base ^ ".s"))
-            andalso isSuccess (UU.run ("cc", [base ^ ".s", UU.runtimePath(), "-o", base]))
+            andalso isSuccess (runCC base)
               then ()
               else raise Error.ERROR
           end
